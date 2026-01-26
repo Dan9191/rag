@@ -1,0 +1,16 @@
+server:
+  port: ${SERVER_PORT:8094}
+
+spring:
+  application:
+    name: rag
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/rag?currentSchema=rag1}
+    username: ${DATASOURCE_NAME:rag_user}
+    password: ${DATASOURCE_PASSWORD:rag_pass}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    schemas: rag1
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
