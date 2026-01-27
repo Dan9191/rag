@@ -4,9 +4,9 @@ import java.util.*
 import org.springframework.data.repository.CrudRepository
 import ru.dan.rag.entity.ArticleChunk
 
+/**
+ * Репозиторий для работы с чанками.
+ */
 interface ArticleChunkRepository : CrudRepository<ArticleChunk, UUID>, ArticleChunkJdbcRepository {
 
-    fun findAllByArticleIdOrderByChunkIndex(articleId: UUID): List<ArticleChunk>
-
-    fun findAllByProcessingStatus(status: String): List<ArticleChunk>
 }

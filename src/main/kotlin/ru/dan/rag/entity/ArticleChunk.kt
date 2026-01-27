@@ -5,6 +5,9 @@ import java.util.*
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
+/**
+ * Чанка.
+ */
 @Table(name = "article_chunks")
 data class ArticleChunk(
     @Id

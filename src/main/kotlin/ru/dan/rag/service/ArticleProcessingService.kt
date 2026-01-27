@@ -19,6 +19,9 @@ import ru.dan.rag.repository.ArticleChunkRepository
 import ru.dan.rag.repository.ArticleElementRepository
 import ru.dan.rag.repository.ArticleRepository
 
+/**
+ * Сервис первичного приема статей.
+ */
 @Service
 class ArticleProcessingService(
     private val articleRepository: ArticleRepository,

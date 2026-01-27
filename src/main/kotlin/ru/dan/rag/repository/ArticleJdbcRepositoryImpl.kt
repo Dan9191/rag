@@ -4,6 +4,9 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 import ru.dan.rag.entity.Article
 
+/**
+ * Реализация методов для работы со статьями.
+ */
 @Repository
 class ArticleJdbcRepositoryImpl(
     private val jdbcTemplate: JdbcTemplate

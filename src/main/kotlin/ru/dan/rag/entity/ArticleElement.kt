@@ -5,7 +5,9 @@ import java.util.*
 import org.springframework.data.annotation.Id
 import org.springframework.data.relational.core.mapping.Table
 
-
+/**
+ * Блок из статьи.
+ */
 @Table(name = "article_elements")
 data class ArticleElement(
     @Id

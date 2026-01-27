@@ -1,0 +1,19 @@
+package ru.dan.rag.config
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.context.annotation.Configuration
+
+@Configuration
+@ConfigurationProperties(prefix = "app.rag")
+class RagPropertiesConfig {
+
+    /**
+     * Урл сервиса векторизации.
+     */
+    val embeddingServiceUrl = "http://localhost:8000/v1/embeddings"
+
+    /**
+     * Задержка (в миллисекундах) между запусками задачи отправки чанк на векторизацию.
+     */
+    val embeddingDelay = 30000L
+}
