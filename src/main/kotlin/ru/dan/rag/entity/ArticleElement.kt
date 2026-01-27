@@ -1,9 +1,9 @@
 package ru.dan.rag.entity
 
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 import java.time.OffsetDateTime
 import java.util.*
+import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.Table
 
 
 @Table(name = "article_elements")

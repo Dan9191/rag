@@ -1,9 +1,10 @@
 package ru.dan.rag.entity
 
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 import java.time.OffsetDateTime
 import java.util.*
+import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.Column
+import org.springframework.data.relational.core.mapping.Table
 
 @Table(name = "articles")
 data class Article(
@@ -12,7 +13,8 @@ data class Article(
 
     val externalArticleId: String,
     val title: String,
-    val originalJson: String, // JSONB → String (Jackson на сервисном уровне)
+    @Column("original_json")
+    val originalJson: String,
     val metadata: String?,
 
     val createdAt: OffsetDateTime? = null,

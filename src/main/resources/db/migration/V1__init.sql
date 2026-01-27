@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
                           id UUID PRIMARY KEY,
                           external_article_id VARCHAR(255) NOT NULL,
                           title TEXT NOT NULL,
@@ -23,7 +23,7 @@ COMMENT ON COLUMN articles.updated_at IS 'Дата и время последн�
 CREATE INDEX idx_articles_external_id ON articles(external_article_id);
 COMMENT ON INDEX idx_articles_external_id IS 'Индекс для быстрого поиска статей по внешнему идентификатору';
 
-CREATE TABLE article_elements (
+CREATE TABLE IF NOT EXISTS article_elements (
                                   id UUID PRIMARY KEY,
                                   article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
                                   element_index INTEGER NOT NULL,
@@ -45,7 +45,7 @@ COMMENT ON COLUMN article_elements.items IS 'Элементы списка в ф
 COMMENT ON COLUMN article_elements.metadata IS 'Метаданные элемента';
 COMMENT ON COLUMN article_elements.created_at IS 'Дата и время создания записи';
 
-CREATE TABLE article_chunks (
+CREATE TABLE IF NOT EXISTS article_chunks (
                                 id UUID PRIMARY KEY,
                                 article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
                                 chunk_index INTEGER NOT NULL,

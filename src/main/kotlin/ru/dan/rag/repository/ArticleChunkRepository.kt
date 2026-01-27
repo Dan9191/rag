@@ -4,7 +4,7 @@ import java.util.*
 import org.springframework.data.repository.CrudRepository
 import ru.dan.rag.entity.ArticleChunk
 
-interface ArticleChunkRepository : CrudRepository<ArticleChunk, UUID> {
+interface ArticleChunkRepository : CrudRepository<ArticleChunk, UUID>, ArticleChunkJdbcRepository {
 
     fun findAllByArticleIdOrderByChunkIndex(articleId: UUID): List<ArticleChunk>
 

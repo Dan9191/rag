@@ -4,7 +4,8 @@ import java.util.*
 import org.springframework.data.repository.CrudRepository
 import ru.dan.rag.entity.ArticleElement
 
-interface ArticleElementRepository : CrudRepository<ArticleElement, UUID> {
+interface ArticleElementRepository : CrudRepository<ArticleElement, UUID>,
+    ArticleElementJdbcRepository {
 
     fun findAllByArticleIdOrderByElementIndex(articleId: UUID): List<ArticleElement>
 }

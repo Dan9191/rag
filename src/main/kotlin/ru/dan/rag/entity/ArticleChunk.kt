@@ -1,9 +1,9 @@
 package ru.dan.rag.entity
 
-import jakarta.persistence.Id
-import jakarta.persistence.Table
 import java.time.OffsetDateTime
 import java.util.*
+import org.springframework.data.annotation.Id
+import org.springframework.data.relational.core.mapping.Table
 
 @Table(name = "article_chunks")
 data class ArticleChunk(
@@ -21,8 +21,8 @@ data class ArticleChunk(
     val lastAttemptAt: OffsetDateTime? = null,
     val processedAt: OffsetDateTime? = null,
 
-    val sourceElementIds: String, // JSONB
-    val chunkMetadata: String?,   // JSONB
+    val sourceElementIds: String,
+    val chunkMetadata: String?,
 
     val createdAt: OffsetDateTime? = null,
     val updatedAt: OffsetDateTime? = null
