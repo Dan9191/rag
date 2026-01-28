@@ -83,30 +83,6 @@ class ArticleProcessingService(
         return newArticle
     }
 
-    private fun parseContentToElements(articleId: UUID, content: String): List<ArticleElement> {
-
-        val paragraphs = content.split("\n\n")
-
-        return paragraphs.mapIndexed { index, paragraph ->
-            val trimmedParagraph = paragraph.trim()
-            if (trimmedParagraph.isNotEmpty()) {
-                ArticleElement(
-                    id = uuidGenerator.generateUUID(),
-                    articleId = articleId,
-                    elementIndex = index,
-                    elementType = "paragraph",
-                    content = trimmedParagraph,
-                    items = null,
-                    metadata = null,
-                    createdAt = OffsetDateTime.now()
-                )
-            } else {
-                null
-            }
-        }.filterNotNull()
-    }
-
-
     /**
      * Получаем из сырых блоков элементы, готовые для чанкования.
      */
@@ -153,67 +129,129 @@ class ArticleProcessingService(
     /**
      * Делим элементы на чанки.
      */
+    // todo переделать чанкование.
+    // todo 1. Если статья больше рекомендованной чанки в 2 раза, то чанковать такую статью как единую целую
+    // todo 2. Если статья больше рекомендованной чанки в 3 раза, то чанковать такую статью как две пересекающиеся
     fun buildChunks(
         articleId: UUID,
         elements: List<ArticleElement>,
-        maxChars: Int = 1500
+        targetChars: Int = 1100,       // желаемый целевой размер ~ 300–400 токенов
+        overlapChars: Int = 350,       // перекрытие ~ 25–30%
+        minChunkChars: Int = 250       // не создаём микрочанки меньше этого
     ): List<ArticleChunk> {
 
         val chunks = mutableListOf<ArticleChunk>()
+        val buffer = StringBuilder()
+        val elementIdsInBuffer = mutableListOf<UUID>()
+        var currentSectionTitle = ""
 
-        var currentElements = mutableListOf<ArticleElement>()
-        var currentText = StringBuilder()
         var chunkIndex = 0
 
-        fun flushChunk() {
-            if (currentElements.isEmpty()) return
+        fun flushChunk(force: Boolean = false) {
+            if (buffer.length < minChunkChars && !force) return
+
+            val rawText = buffer.toString().trim()
+            if (rawText.isBlank()) return
+
+            // Добавляем заголовок раздела в начало, если его там ещё нет
+            val displayText = if (currentSectionTitle.isNotBlank() &&
+                !rawText.startsWith(currentSectionTitle.trim())
+            ) {
+                "$currentSectionTitle\n\n$rawText"
+            } else {
+                rawText
+            }
 
             chunks += ArticleChunk(
                 id = uuidGenerator.generateUUID(),
                 articleId = articleId,
                 chunkIndex = chunkIndex++,
-                textForSearch = currentText.toString().trim(),
+                textForSearch = displayText,
                 processingStatus = "PENDING",
                 sourceElementIds = objectMapper.writeValueAsString(
-                    currentElements.map { it.id.toString() }
+                    elementIdsInBuffer.map { it.toString() }
                 ),
                 chunkMetadata = objectMapper.writeValueAsString(
                     mapOf(
-                        "elementTypes" to currentElements.map { it.elementType },
-                        "charCount" to currentText.length
+                        "section" to currentSectionTitle,
+                        "elementTypes" to elementIdsInBuffer
+                            .mapNotNull { id -> elements.find { it.id == id }?.elementType }
+                            .distinct(),
+                        "charCount" to displayText.length,
+                        "hasOverlap" to (overlapChars > 0)
                     )
                 )
             )
 
-            currentElements = mutableListOf()
-            currentText = StringBuilder()
+            // Подготавливаем перекрытие для следующего чанка
+            if (overlapChars > 0 && buffer.length > overlapChars) {
+                val overlapPart = buffer.substring(buffer.length - overlapChars)
+                buffer.clear()
+                buffer.append(overlapPart)
+
+                // Сохраняем только последние элементы, которые попали в перекрытие
+                // (примерно — можно улучшить точнее, но для начала достаточно)
+                elementIdsInBuffer.clear()
+            } else {
+                buffer.clear()
+                elementIdsInBuffer.clear()
+            }
         }
 
         for (element in elements) {
 
-            if (element.elementType == "heading" && currentElements.isNotEmpty()) {
-                flushChunk()
-            }
-
-            val text = when (element.elementType) {
-                "heading" -> element.content ?: ""
-                "paragraph" -> element.content ?: ""
-                "list" -> {
-                    val items = objectMapper.readValue<List<String>>(element.items!!)
-                    items.joinToString("\n• ", prefix = "• ")
+            val textPart = when (element.elementType) {
+                "heading" -> {
+                    val title = (element.content ?: "").trim()
+                    if (title.isNotBlank()) {
+                        currentSectionTitle = title
+                    }
+                    "$title\n"
                 }
+
+                "paragraph" -> {
+                    (element.content?.trim() ?: "") + "\n\n"
+                }
+
+                "list" -> {
+                    if (element.items.isNullOrBlank()) ""
+                    else {
+                        try {
+                            val items = objectMapper.readValue<List<String>>(element.items)
+                            if (items.isEmpty()) ""
+                            else items.joinToString(
+                                separator = "\n",
+                                prefix = "• ",
+                                postfix = "\n\n"
+                            ) { "• $it" }
+                        } catch (e: Exception) {
+                            log.warn("Cannot parse list items", e)
+                            ""
+                        }
+                    }
+                }
+
                 else -> ""
             }
 
-            if (currentText.length + text.length > maxChars) {
+            if (textPart.isBlank()) continue
+
+            // Проверяем, не превысит ли добавление лимит
+            if (buffer.isNotEmpty() && buffer.length + textPart.length > targetChars) {
                 flushChunk()
             }
 
-            currentElements += element
-            currentText.append(text).append("\n\n")
+            // Особая логика для заголовков — начинаем новый чанк перед важным заголовком
+            if (element.elementType == "heading" && buffer.isNotEmpty()) {
+                flushChunk()
+            }
+
+            buffer.append(textPart)
+            elementIdsInBuffer.add(element.id)
         }
 
-        flushChunk()
+        // Не забываем последний кусок
+        flushChunk(force = true)
 
         return chunks
     }

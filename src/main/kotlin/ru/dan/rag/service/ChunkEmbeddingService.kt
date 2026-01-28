@@ -1,5 +1,6 @@
 package ru.dan.rag.service
 
+import kotlin.math.sqrt
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -25,14 +26,6 @@ class ChunkEmbeddingService(
 ) {
 
     private val log = LoggerFactory.getLogger(ChunkEmbeddingService::class.java)
-//
-//    private val restTemplate = RestTemplate().apply {
-//        val factory = org.springframework.http.client.SimpleClientHttpRequestFactory().apply {
-//            setConnectTimeout(60000)
-//            setReadTimeout(60000)
-//        }
-//        requestFactory = factory
-//    }
 
     /**
      * Задача для отправки чанк на векторизацию.
@@ -81,7 +74,7 @@ class ChunkEmbeddingService(
     /**
      * Обращение к сервису векторизации.
      */
-    private fun fetchEmbedding(text: String): List<Float> {
+    fun fetchEmbedding(text: String): List<Float> {
         val headers = HttpHeaders().apply {
             contentType = MediaType.APPLICATION_JSON
         }
@@ -112,6 +105,14 @@ class ChunkEmbeddingService(
         val embeddingList = firstEmbedding["embedding"] as? List<Double>
             ?: throw RuntimeException("Invalid embedding format")
 
-        return embeddingList.map { it.toFloat() }
+        return normalizeEmbedding(embeddingList.map { it.toFloat() })
+    }
+
+    /**
+     * Нормализация вектора.
+     */
+    private fun normalizeEmbedding(embedding: List<Float>): List<Float> {
+        val norm = sqrt(embedding.map { it * it }.sum())
+        return embedding.map { it / norm }
     }
 }
