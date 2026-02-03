@@ -1,34 +1,33 @@
 package ru.dan.rag.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
+import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.parser.Parser
+import dev.langchain4j.data.document.Document
+import dev.langchain4j.data.document.splitter.DocumentSplitters
+import dev.langchain4j.data.segment.TextSegment
 import java.time.OffsetDateTime
 import java.util.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import ru.dan.rag.config.RagPropertiesConfig
 import ru.dan.rag.entity.Article
 import ru.dan.rag.entity.ArticleChunk
-import ru.dan.rag.entity.ArticleElement
 import ru.dan.rag.model.ArticleMessage
-import ru.dan.rag.model.HeadingBlock
-import ru.dan.rag.model.ListBlock
-import ru.dan.rag.model.ParagraphBlock
-import ru.dan.rag.model.RawArticleBlock
 import ru.dan.rag.repository.ArticleChunkRepository
-import ru.dan.rag.repository.ArticleElementRepository
 import ru.dan.rag.repository.ArticleRepository
 
 /**
- * Сервис первичного приема статей.
+ * Сервис первичного приема статей в формате Markdown.
  */
 @Service
 class ArticleProcessingService(
     private val articleRepository: ArticleRepository,
-    private val articleElementRepository: ArticleElementRepository,
     private val chunkRepository: ArticleChunkRepository,
+    private val uuidGenerator: TimeOrderedUuidGenerator,
     private val objectMapper: ObjectMapper,
-    private val uuidGenerator: TimeOrderedUuidGenerator
+    private val ragPropertiesConfig: RagPropertiesConfig
 ) {
 
     private val log = LoggerFactory.getLogger(ArticleProcessingService::class.java)
@@ -37,22 +36,21 @@ class ArticleProcessingService(
     fun processArticle(articleMessage: ArticleMessage): UUID {
 
         val article = createOrGetArticle(articleMessage)
+        val preparedText: String = markdownToPlainText(articleMessage.content)
 
-        // 1. JSON → Raw blocks
-        val blocks: List<RawArticleBlock> =
-            objectMapper.readValue(articleMessage.content)
+        val splitter = DocumentSplitters.recursive(
+            ragPropertiesConfig.maxSegmentSizeInChars,
+            ragPropertiesConfig.maxOverlapSizeInChars
+        )
 
-        // 2. Raw blocks → ArticleElement
-        val elements = toArticleElements(article.id, blocks)
-        articleElementRepository.batchInsert(elements)
+        val document = Document.from(preparedText)
+        val segments = splitter.split(document)
 
-        // 3. Elements → Chunks
-        val chunks = buildChunks(article.id, elements)
+        val chunks = createArticleChunksFromTextSegments(segments, article)
         chunkRepository.batchInsert(chunks)
 
         return article.id
     }
-
 
     /**
      * Создаем или получаем статью.
@@ -73,7 +71,7 @@ class ArticleProcessingService(
                 id = uuidGenerator.generateUUID(),
                 externalArticleId = articleMessage.id,
                 title = articleMessage.title,
-                originalJson = articleMessage.content,
+                originalContent = articleMessage.content,
                 metadata = articleMessage.metadata,
                 createdAt = OffsetDateTime.now(),
                 updatedAt = OffsetDateTime.now()
@@ -84,175 +82,39 @@ class ArticleProcessingService(
     }
 
     /**
-     * Получаем из сырых блоков элементы, готовые для чанкования.
+     * Очистка текста от markdown тегов.
      */
-    fun toArticleElements(
-        articleId: UUID,
-        blocks: List<RawArticleBlock>
-    ): List<ArticleElement> {
-
-        return blocks.mapIndexed { index, block ->
-            when (block) {
-                is ParagraphBlock -> ArticleElement(
-                    id = uuidGenerator.generateUUID(),
-                    articleId = articleId,
-                    elementIndex = index,
-                    elementType = "paragraph",
-                    content = block.content,
-                    items = null,
-                    metadata = null
-                )
-
-                is HeadingBlock -> ArticleElement(
-                    id = uuidGenerator.generateUUID(),
-                    articleId = articleId,
-                    elementIndex = index,
-                    elementType = "heading",
-                    content = block.content,
-                    items = null,
-                    metadata = null
-                )
-
-                is ListBlock -> ArticleElement(
-                    id = uuidGenerator.generateUUID(),
-                    articleId = articleId,
-                    elementIndex = index,
-                    elementType = "list",
-                    content = null,
-                    items = objectMapper.writeValueAsString(block.items),
-                    metadata = null
-                )
-            }
-        }
+    fun markdownToPlainText(markdown: String): String {
+        val parser = Parser.builder().build()
+        val document = parser.parse(markdown)
+        val htmlRenderer = HtmlRenderer.builder().build()
+        val html = htmlRenderer.render(document)
+        return org.jsoup.Jsoup.parse(html).text()
     }
 
     /**
-     * Делим элементы на чанки.
+     * Создание чанк на основе сегметов.
      */
-    // todo переделать чанкование.
-    // todo 1. Если статья больше рекомендованной чанки в 2 раза, то чанковать такую статью как единую целую
-    // todo 2. Если статья больше рекомендованной чанки в 3 раза, то чанковать такую статью как две пересекающиеся
-    fun buildChunks(
-        articleId: UUID,
-        elements: List<ArticleElement>,
-        targetChars: Int = 1100,       // желаемый целевой размер ~ 300–400 токенов
-        overlapChars: Int = 350,       // перекрытие ~ 25–30%
-        minChunkChars: Int = 250       // не создаём микрочанки меньше этого
-    ): List<ArticleChunk> {
-
-        val chunks = mutableListOf<ArticleChunk>()
-        val buffer = StringBuilder()
-        val elementIdsInBuffer = mutableListOf<UUID>()
-        var currentSectionTitle = ""
-
-        var chunkIndex = 0
-
-        fun flushChunk(force: Boolean = false) {
-            if (buffer.length < minChunkChars && !force) return
-
-            val rawText = buffer.toString().trim()
-            if (rawText.isBlank()) return
-
-            // Добавляем заголовок раздела в начало, если его там ещё нет
-            val displayText = if (currentSectionTitle.isNotBlank() &&
-                !rawText.startsWith(currentSectionTitle.trim())
-            ) {
-                "$currentSectionTitle\n\n$rawText"
-            } else {
-                rawText
-            }
-
-            chunks += ArticleChunk(
+    fun createArticleChunksFromTextSegments(
+        textSegments: List<TextSegment>,
+        article: Article,
+        ): List<ArticleChunk> {
+        return textSegments.mapIndexed { index, textSegment ->
+            ArticleChunk(
                 id = uuidGenerator.generateUUID(),
-                articleId = articleId,
-                chunkIndex = chunkIndex++,
-                textForSearch = displayText,
+                articleId = article.id,
+                chunkIndex = index,
+                textForSearch = textSegment.text(),
                 processingStatus = "PENDING",
-                sourceElementIds = objectMapper.writeValueAsString(
-                    elementIdsInBuffer.map { it.toString() }
-                ),
                 chunkMetadata = objectMapper.writeValueAsString(
-                    mapOf(
-                        "section" to currentSectionTitle,
-                        "elementTypes" to elementIdsInBuffer
-                            .mapNotNull { id -> elements.find { it.id == id }?.elementType }
-                            .distinct(),
-                        "charCount" to displayText.length,
-                        "hasOverlap" to (overlapChars > 0)
-                    )
-                )
+                            mapOf(
+                                "articleName" to article.title,
+                                "externalArticleId" to article.externalArticleId,
+                                "chunk_index" to index,
+                                "total_chunks" to textSegments.size,
+                            )
+                        )
             )
-
-            // Подготавливаем перекрытие для следующего чанка
-            if (overlapChars > 0 && buffer.length > overlapChars) {
-                val overlapPart = buffer.substring(buffer.length - overlapChars)
-                buffer.clear()
-                buffer.append(overlapPart)
-
-                // Сохраняем только последние элементы, которые попали в перекрытие
-                // (примерно — можно улучшить точнее, но для начала достаточно)
-                elementIdsInBuffer.clear()
-            } else {
-                buffer.clear()
-                elementIdsInBuffer.clear()
-            }
         }
-
-        for (element in elements) {
-
-            val textPart = when (element.elementType) {
-                "heading" -> {
-                    val title = (element.content ?: "").trim()
-                    if (title.isNotBlank()) {
-                        currentSectionTitle = title
-                    }
-                    "$title\n"
-                }
-
-                "paragraph" -> {
-                    (element.content?.trim() ?: "") + "\n\n"
-                }
-
-                "list" -> {
-                    if (element.items.isNullOrBlank()) ""
-                    else {
-                        try {
-                            val items = objectMapper.readValue<List<String>>(element.items)
-                            if (items.isEmpty()) ""
-                            else items.joinToString(
-                                separator = "\n",
-                                prefix = "• ",
-                                postfix = "\n\n"
-                            ) { "• $it" }
-                        } catch (e: Exception) {
-                            log.warn("Cannot parse list items", e)
-                            ""
-                        }
-                    }
-                }
-
-                else -> ""
-            }
-
-            if (textPart.isBlank()) continue
-
-            // Проверяем, не превысит ли добавление лимит
-            if (buffer.isNotEmpty() && buffer.length + textPart.length > targetChars) {
-                flushChunk()
-            }
-
-            // Особая логика для заголовков — начинаем новый чанк перед важным заголовком
-            if (element.elementType == "heading" && buffer.isNotEmpty()) {
-                flushChunk()
-            }
-
-            buffer.append(textPart)
-            elementIdsInBuffer.add(element.id)
-        }
-
-        // Не забываем последний кусок
-        flushChunk(force = true)
-
-        return chunks
     }
 }

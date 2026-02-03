@@ -29,10 +29,9 @@ class ArticleChunkJdbcRepositoryImpl (
                 chunk_index,
                 text_for_search,
                 processing_status,
-                source_element_ids,
                 chunk_metadata
             ) VALUES (
-                ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb
+                ?, ?, ?, ?, ?, ?::jsonb
             )
             """.trimIndent(),
             elements,
@@ -43,8 +42,7 @@ class ArticleChunkJdbcRepositoryImpl (
             ps.setInt(3, element.chunkIndex)
             ps.setString(4, element.textForSearch)
             ps.setString(5, element.processingStatus)
-            ps.setString(6, element.sourceElementIds)
-            ps.setString(7, element.chunkMetadata)
+            ps.setString(6, element.chunkMetadata)
         }
     }
 

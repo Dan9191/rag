@@ -40,6 +40,10 @@ dependencies {
 	// Spring AI
 	implementation("org.springframework.ai:spring-ai-starter-model-ollama")
 
+	implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
+
+	implementation("dev.langchain4j:langchain4j:0.31.0")
+
 	implementation("com.fasterxml.uuid:java-uuid-generator:4.1.1")
 	implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
 	implementation("org.flywaydb:flyway-database-postgresql")

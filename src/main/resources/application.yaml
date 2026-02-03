@@ -18,6 +18,9 @@ spring:
     ollama:
       base-url: http://localhost:11434
       chat:
-        model: qwen2.5:3b
+        model: codellama:7b
         options:
-          temperature: 0.3
+          temperature: 0.35
+          top_p: 0.9
+          max_tokens: 2512
+          repeat_penalty: 1.1

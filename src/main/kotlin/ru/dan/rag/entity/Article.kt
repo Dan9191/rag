@@ -16,8 +16,8 @@ data class Article(
 
     val externalArticleId: String,
     val title: String,
-    @Column("original_json")
-    val originalJson: String,
+    @Column("original_content")
+    val originalContent: String,
     val metadata: String?,
 
     val createdAt: OffsetDateTime? = null,

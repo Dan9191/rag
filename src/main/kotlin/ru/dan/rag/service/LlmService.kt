@@ -1,6 +1,8 @@
 package ru.dan.rag.service
 
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.messages.SystemMessage
+import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.PromptTemplate
 import org.springframework.stereotype.Service
@@ -12,7 +14,7 @@ import reactor.core.publisher.Flux
 @Service
 class LlmService (
     private val chatModel: ChatModel,
-    private val chatClientBuilder: ChatClient.Builder,
+    chatClientBuilder: ChatClient.Builder,
 ) {
 
     private val chatClient: ChatClient = chatClientBuilder.build()
@@ -31,23 +33,28 @@ class LlmService (
      * Стрим ответ
      */
     fun generateResponseStream(query: String, context: String): Flux<String> {
-        val systemPrompt = """
-            Отвечай на основе следующей информации из базы знаний. 
-            Не придумывай факты. Если в контексте нет ответа — напиши: "Информация отсутствует". 
-            Форматируй ответ в markdown, будь краток и структурирован. 
-            Структурируй текст по логическим блокам, которые начинаются с новой строки в виде отдельного абзаца, для этого используй символ <br>.
-            В конце ответа приложи список ссылок и названия статей из полей articleId и articleTitle.
-            Ограничивай статью размером до 1000 слов.
+        val messages = listOf(
+            SystemMessage("""
+                Ты — RAG-ассистент.
+                Используй ИСКЛЮЧИТЕЛЬНО информацию из переданного контекста.
+                Ответ обязательно должен быть на русском языке.
+                Запрещено использовать общие знания.
+                Если ответа нет в контексте — напиши: "Информация отсутствует".
+                Форматируй ответ в Markdown.
+                Укажи источники в конце ответа.
+            """.trimIndent()),
+
+            UserMessage("""
+            Используй только следующий контекст для ответа.
+                
+            Контекст:$context
             
-            Контекст (самые релевантные фрагменты):
-            $context
-            
-            Вопрос:
-        """.trimIndent()
+            Вопрос: $query
+            """.trimIndent())
+            )
 
         return chatClient.prompt()
-            .system(systemPrompt)
-            .user(query)
+            .messages(messages)
             .stream()
             .content()
     }

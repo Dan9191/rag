@@ -21,4 +21,14 @@ class RagPropertiesConfig {
      * Минимальный коэффициент схожести в векторном поиске.
      */
     val minSimilarity = 0.80
+
+    /**
+     * Максимальный размер сегмента при разбиении на чанки.
+     */
+    val maxSegmentSizeInChars = 1000
+
+    /**
+     * Размер перекрытия чанк.
+     */
+    val maxOverlapSizeInChars = 150
 }
