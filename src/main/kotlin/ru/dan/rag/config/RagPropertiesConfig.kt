@@ -20,5 +20,5 @@ class RagPropertiesConfig {
     /**
      * Минимальный коэффициент схожести в векторном поиске.
      */
-    val minSimilarity = 0.83
+    val minSimilarity = 0.80
 }

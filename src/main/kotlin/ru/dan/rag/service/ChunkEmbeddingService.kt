@@ -16,7 +16,7 @@ import ru.dan.rag.model.ChunkForProcessing
 import ru.dan.rag.repository.ArticleChunkRepository
 
 /**
- * Сервис наполнения чанков векторами.
+ * Сервис работы с векторизацией.
  */
 @Service
 class ChunkEmbeddingService(

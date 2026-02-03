@@ -16,8 +16,18 @@ java {
 	}
 }
 
+
+
+extra["springAiVersion"] = "2.0.0-M2"
+
 repositories {
 	mavenCentral()
+}
+
+dependencyManagement {
+	imports {
+		mavenBom("org.springframework.ai:spring-ai-bom:${property("springAiVersion")}")
+	}
 }
 
 dependencies {
@@ -25,6 +35,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+	// Spring AI
+	implementation("org.springframework.ai:spring-ai-starter-model-ollama")
 
 	implementation("com.fasterxml.uuid:java-uuid-generator:4.1.1")
 	implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")

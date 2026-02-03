@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Chat Stream (Markdown)</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f9fafb;
+            padding: 20px;
+            max-width: 900px;
+            margin: auto;
+            color: #111827;
+        }
+
+        h2 {
+            margin-bottom: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 90px;
+            font-size: 14px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            resize: vertical;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid #2563eb;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        /* === Область ответа === */
+
+        .chat-output {
+            margin-top: 20px;
+            padding: 18px 20px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            line-height: 1.6;
+        }
+
+        .chat-output p {
+            margin: 0 0 0.9em;
+        }
+
+        .chat-output ul {
+            padding-left: 22px;
+            margin: 0.6em 0;
+        }
+
+        .chat-output li {
+            margin-bottom: 0.3em;
+        }
+
+        .chat-output pre {
+            background: #f6f8fa;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+
+        .chat-output code {
+            background: #f6f8fa;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .chat-output strong {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Чат (stream + markdown)</h2>
+
+<textarea id="query" placeholder="Введите запрос..."></textarea>
+<br>
+<button onclick="send()">Отправить</button>
+
+<div id="output" class="chat-output"></div>
+
+<script>
+    marked.setOptions({
+        breaks: true
+    });
+
+    let fullText = '';
+
+    async function send() {
+        const query = document.getElementById('query').value;
+        const output = document.getElementById('output');
+
+        fullText = '';
+        output.innerHTML = '';
+
+        const response = await fetch(
+            'http://localhost:8094/api/v1/request/chat/stream',
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            }
+        );
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        let buffer = '';
+        let lastRender = 0;
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const events = buffer.split('\n\n');
+            buffer = events.pop();
+
+            let updated = false;
+
+            for (const event of events) {
+                const lines = event.split('\n');
+                for (const line of lines) {
+                    if (!line.startsWith('data:')) continue;
+                    const chunk = line.slice(5);
+                    fullText += chunk;
+                    updated = true;
+                }
+            }
+
+
+            if (updated && Date.now() - lastRender > 50) {
+                output.innerHTML = marked.parse(fullText);
+                lastRender = Date.now();
+            }
+        }
+
+        output.innerHTML = marked.parse(fullText);
+    }
+</script>
+
+</body>
+</html>
