@@ -16,17 +16,22 @@ class ArticleJdbcRepositoryImpl(
         jdbcTemplate.update(
             """
             INSERT INTO articles (
-                id, external_article_id, title, original_content, metadata,
-                created_at, updated_at
+                id, 
+                external_article_id, 
+                title, 
+                original_content, 
+                "source", 
+                created_at, 
+                updated_at
             ) VALUES (
-                ?, ?, ?, ?, ?::jsonb, ?, ?
+                ?, ?, ?, ?, ?, ?, ?
             )
             """.trimIndent(),
             article.id,
             article.externalArticleId,
             article.title,
             article.originalContent,
-            article.metadata,
+            article.source,
             article.createdAt,
             article.updatedAt
         )

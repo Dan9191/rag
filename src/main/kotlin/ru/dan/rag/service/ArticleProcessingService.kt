@@ -36,7 +36,7 @@ class ArticleProcessingService(
     fun processArticle(articleMessage: ArticleMessage): UUID {
 
         val article = createOrGetArticle(articleMessage)
-        val preparedText: String = markdownToPlainText(articleMessage.content)
+        val preparedText: String = markdownToPlainText(articleMessage.body)
 
         val splitter = DocumentSplitters.recursive(
             ragPropertiesConfig.maxSegmentSizeInChars,
@@ -56,23 +56,23 @@ class ArticleProcessingService(
      * Создаем или получаем статью.
      */
     private fun createOrGetArticle(articleMessage: ArticleMessage): Article {
-        val existingArticle = articleRepository.findByExternalArticleId(articleMessage.id)
+        val existingArticle = articleRepository.findByExternalArticleId(articleMessage.id.toString())
         val newArticle: Article
 
         if (existingArticle != null) {
             log.info("Статья уже существует, обновляем: id=${existingArticle.id}")
             newArticle = existingArticle.copy(
-                    title = articleMessage.title,
-                    metadata = articleMessage.metadata,
+                    title = articleMessage.articleName,
+                    source = articleMessage.source,
                     updatedAt = OffsetDateTime.now()
                 )
         } else {
             newArticle = Article(
                 id = uuidGenerator.generateUUID(),
-                externalArticleId = articleMessage.id,
-                title = articleMessage.title,
-                originalContent = articleMessage.content,
-                metadata = articleMessage.metadata,
+                externalArticleId = articleMessage.id.toString(),
+                title = articleMessage.articleName,
+                originalContent = articleMessage.body,
+                source = articleMessage.source,
                 createdAt = OffsetDateTime.now(),
                 updatedAt = OffsetDateTime.now()
             )
@@ -93,7 +93,7 @@ class ArticleProcessingService(
     }
 
     /**
-     * Создание чанк на основе сегметов.
+     * Создание чанк на основе сегментов.
      */
     fun createArticleChunksFromTextSegments(
         textSegments: List<TextSegment>,

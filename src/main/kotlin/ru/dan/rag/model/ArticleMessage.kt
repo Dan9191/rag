@@ -1,17 +1,18 @@
 package ru.dan.rag.model
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
+import com.fasterxml.jackson.databind.annotation.JsonNaming
+import java.util.*
 
 /**
- * Модель статьи для чтения из брокера.
+ * Модель сообщения для отправки в RabbitMQ
  */
-data class ArticleMessage (
-    @JsonProperty("id")
-    val id: String,
-    @JsonProperty("title")
-    val title: String,
-    @JsonProperty("content")
-    val content: String,
-    @JsonProperty("metadata")
-    val metadata: String,
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy::class)
+data class ArticleMessage(
+    val id: UUID,
+    val articleId: UUID,
+    val articleName: String,
+    val eventType: String,
+    val body: String,
+    val source: String?
 )

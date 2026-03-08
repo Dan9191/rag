@@ -2,16 +2,10 @@ package ru.dan.rag.service
 
 import kotlin.math.sqrt
 import org.slf4j.LoggerFactory
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.web.client.RestTemplate
-import org.springframework.web.client.postForEntity
-import ru.dan.rag.config.RagPropertiesConfig
+import ru.dan.rag.client.GigaEmbeddingClient
 import ru.dan.rag.model.ChunkForProcessing
 import ru.dan.rag.repository.ArticleChunkRepository
 
@@ -21,8 +15,7 @@ import ru.dan.rag.repository.ArticleChunkRepository
 @Service
 class ChunkEmbeddingService(
     private val articleChunkRepository: ArticleChunkRepository,
-    private val ragPropertiesConfig: RagPropertiesConfig,
-    private val embeddingRestTemplate: RestTemplate
+    private val gigaEmbeddingClient: GigaEmbeddingClient
 ) {
 
     private val log = LoggerFactory.getLogger(ChunkEmbeddingService::class.java)
@@ -36,7 +29,6 @@ class ChunkEmbeddingService(
         log.info("Starting processing of pending chunks")
 
         val pendingChunks = articleChunkRepository.findPendingChunks(100)
-
         if (pendingChunks.isEmpty()) {
             log.info("No pending chunks found")
             return
@@ -44,8 +36,9 @@ class ChunkEmbeddingService(
 
         log.info("Found {} chunks to process", pendingChunks.size)
 
+        val accessToken:String = gigaEmbeddingClient.getAccessToken().toString()
         for (chunk in pendingChunks) {
-            processSingleChunk(chunk)
+            processSingleChunk(chunk, accessToken)
         }
 
         log.info("Finished processing chunks")
@@ -54,11 +47,11 @@ class ChunkEmbeddingService(
     /**
      * Сохранение вектора в БД.
      */
-    private fun processSingleChunk(chunk: ChunkForProcessing) {
+    private fun processSingleChunk(chunk: ChunkForProcessing, accessToken: String) {
         log.debug("Processing chunk with id={}", chunk.id)
 
         try {
-            val embedding = fetchEmbedding(chunk.text)
+            val embedding = fetchEmbedding(chunk.text, accessToken)
             articleChunkRepository.updateWithEmbedding(chunk.id, embedding)
             log.debug("Chunk with id={} processed successfully", chunk.id)
         } catch (e: Exception) {
@@ -74,38 +67,11 @@ class ChunkEmbeddingService(
     /**
      * Обращение к сервису векторизации.
      */
-    fun fetchEmbedding(text: String): List<Float> {
-        val headers = HttpHeaders().apply {
-            contentType = MediaType.APPLICATION_JSON
-        }
+    fun fetchEmbedding(text: String, accessToken: String): List<Float> {
+        val response: List<Float> = gigaEmbeddingClient.getVector(text, accessToken)
+            ?: throw RuntimeException("Embedding service returned empty data list")
 
-        val requestBody = mapOf("input" to text)
-        val request = HttpEntity(requestBody, headers)
-
-        val response: ResponseEntity<Map<String, Any>> = try {
-            embeddingRestTemplate.postForEntity(ragPropertiesConfig.embeddingServiceUrl, request)
-        } catch (e: Exception) {
-            throw RuntimeException("Error while calling embedding service", e)
-        }
-
-        if (!response.statusCode.is2xxSuccessful) {
-            throw RuntimeException("Embedding service returned non-success status: ${response.statusCode}")
-        }
-
-        val responseBody = response.body ?: throw RuntimeException("Пустой ответ от сервиса векторизации")
-
-        val data = responseBody["data"] as? List<Map<String, Any>>
-            ?: throw RuntimeException("Embedding service returned empty response body")
-
-        if (data.isEmpty()) {
-            throw RuntimeException("Embedding service returned empty data list")
-        }
-
-        val firstEmbedding = data[0]
-        val embeddingList = firstEmbedding["embedding"] as? List<Double>
-            ?: throw RuntimeException("Invalid embedding format")
-
-        return normalizeEmbedding(embeddingList.map { it.toFloat() })
+        return normalizeEmbedding(response)
     }
 
     /**

@@ -31,9 +31,11 @@ dependencyManagement {
 }
 
 dependencies {
+	implementation("org.springframework.boot:spring-boot-starter-amqp")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 
@@ -44,6 +46,7 @@ dependencies {
 
 	implementation("dev.langchain4j:langchain4j:0.31.0")
 
+	implementation("org.apache.httpcomponents.client5:httpclient5:5.6")
 	implementation("com.fasterxml.uuid:java-uuid-generator:4.1.1")
 	implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
 	implementation("org.flywaydb:flyway-database-postgresql")
@@ -56,6 +59,9 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+	testImplementation("org.testcontainers:postgresql:1.21.4")
+	testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+	testImplementation("org.testcontainers:jdbc:1.21.4")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

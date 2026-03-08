@@ -18,7 +18,7 @@ data class Article(
     val title: String,
     @Column("original_content")
     val originalContent: String,
-    val metadata: String?,
+    val source: String?,
 
     val createdAt: OffsetDateTime? = null,
     val updatedAt: OffsetDateTime? = null
