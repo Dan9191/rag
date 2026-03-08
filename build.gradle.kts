@@ -16,8 +16,6 @@ java {
 	}
 }
 
-
-
 extra["springAiVersion"] = "2.0.0-M2"
 
 repositories {
@@ -37,11 +35,11 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
 	implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
-
 	implementation("dev.langchain4j:langchain4j:0.31.0")
-
 	implementation("org.apache.httpcomponents.client5:httpclient5:5.6")
 	implementation("com.fasterxml.uuid:java-uuid-generator:4.1.1")
 	implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")

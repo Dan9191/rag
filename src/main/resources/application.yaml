@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: rag
+  security:
+    oauth2:
+      resource-server:
+        jwt:
+          issuer-uri: ${KEYCLOAK:http://localhost:9090/realms/graduation}
   datasource:
     url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/rag?currentSchema=rag1}
     username: ${DATASOURCE_NAME:rag_user}
@@ -28,4 +33,4 @@ app:
       token-url: ${TOKEN_URL:https://ngw.devices.sberbank.ru:9443/api/v2/oauth}
       llm-url: ${LLM_URL:https://gigachat.devices.sberbank.ru/api/v1/chat/completions}
       llm-model: ${LLM_MODEL:GigaChat-2-Max}
-    min-similarity: ${SECRET_TOKEN:0.50}
+    min-similarity: ${MIN_SIMILARITY:0.50}

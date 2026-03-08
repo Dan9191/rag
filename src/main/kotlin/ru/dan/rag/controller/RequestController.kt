@@ -12,7 +12,7 @@ import ru.dan.rag.service.LlmService
 import ru.dan.rag.service.SearchService
 
 @RestController
-@RequestMapping("/api/v1/request")
+@RequestMapping("/api/v1/rag")
 @CrossOrigin(
     origins = ["http://localhost:63343", "http://localhost:*"],
     allowedHeaders = ["*"],
@@ -25,7 +25,7 @@ class RequestController (
     private val llmService: LlmService
 ) {
 
-    @PostMapping("/ai/answer")
+    @PostMapping("/answer")
     fun chat(@RequestBody request: SearchRequest): Map<String, String> {
         val searchResponse = searchService.search(request)
 
@@ -42,7 +42,7 @@ class RequestController (
         return mapOf("response" to response)
     }
 
-    @PostMapping
+    @PostMapping("/search")
     fun search(@RequestBody request: SearchRequest): SearchResponse {
         return searchService.search(request)
     }
