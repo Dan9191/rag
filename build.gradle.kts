@@ -37,10 +37,6 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
-	implementation("org.springframework.boot:spring-boot-starter-webflux")
-
-	// Spring AI
-	implementation("org.springframework.ai:spring-ai-starter-model-ollama")
 
 	implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 

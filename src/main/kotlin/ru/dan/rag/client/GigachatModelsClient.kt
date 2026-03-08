@@ -14,15 +14,21 @@ import ru.dan.rag.config.RagPropertiesConfig
 private val logger = KotlinLogging.logger {}
 
 @Component
-class GigaEmbeddingClient(
+class GigachatModelsClient(
     @Qualifier("gigachatRestTemplate") private val restTemplate: RestTemplate,
     private val ragPropertiesConfig: RagPropertiesConfig) {
 
+    /**
+     * Класс для обработки ответа с токеном доступа.
+     */
     data class TokenResponse(
         val access_token: String,
         val expires_at: Long
     )
 
+    /**
+     * Классы для обработки ответа от embedding моделей.
+     */
     data class EmbeddingResponse(
         val `object`: String,
         val model: String,
@@ -41,6 +47,34 @@ class GigaEmbeddingClient(
     )
 
     /**
+     * Классы для обработки ответа от LLM моделей.
+     */
+    data class ChatRequest(
+        val model: String,
+        val messages: List<Message>,
+        val stream: Boolean = false,
+        val repetition_penalty: Double = 1.0
+    )
+
+    data class Message(
+        val role: String,
+        val content: String
+    )
+
+    data class ChatResponse(
+        val choices: List<Choice>
+    )
+
+    data class Choice(
+        val message: AssistantMessage
+    )
+
+    data class AssistantMessage(
+        val role: String,
+        val content: String
+    )
+
+    /**
      * Запрос для получения токена доступа.
      *
      * @return access token.
@@ -54,14 +88,14 @@ class GigaEmbeddingClient(
 
             val headers = HttpHeaders().apply {
                 contentType = MediaType.APPLICATION_FORM_URLENCODED
-                add("Authorization", "Basic ${ragPropertiesConfig.embedding.secretToken}")
+                add("Authorization", "Basic ${ragPropertiesConfig.gigachat.secretToken}")
                 add("RqUID", UUID.randomUUID().toString())
             }
 
             val entity = HttpEntity(body, headers)
 
             val response = restTemplate.postForObject(
-                ragPropertiesConfig.embedding.tokenUrl,
+                ragPropertiesConfig.gigachat.tokenUrl,
                 entity,
                 TokenResponse::class.java
             )
@@ -80,21 +114,23 @@ class GigaEmbeddingClient(
      * @param text Строка для векторизации
      * @return Список чисел с плавающей точкой (Float) — векторизация текста
      */
-    fun getVector(text: String, accessToken: String): List<Float>? {
+    fun getVector(text: String): List<Float>? {
         try {
+            val token = getAccessToken() ?: return null
+
             val requestBody = mapOf(
-                "model" to ragPropertiesConfig.embedding.embeddingModel,
+                "model" to ragPropertiesConfig.gigachat.embeddingModel,
                 "input" to listOf(text)
             )
             val headers = HttpHeaders().apply {
                 contentType = MediaType.APPLICATION_JSON
-                add("Authorization", "Bearer $accessToken")
+                add("Authorization", "Bearer $token")
             }
 
             val entity = HttpEntity(requestBody, headers)
 
             val response = restTemplate.postForObject(
-                ragPropertiesConfig.embedding.embeddingUrl,
+                ragPropertiesConfig.gigachat.embeddingUrl,
                 entity,
                 EmbeddingResponse::class.java
             ) ?: return null
@@ -106,5 +142,35 @@ class GigaEmbeddingClient(
             return null
         }
     }
-}
 
+    /**
+     * Метод для генерации ответа.
+     *
+     * @param messages результат векторного поиска в БД.
+     * @return Сгенерированный ответ.
+     */
+    fun generateText(messages: List<Message>): String? {
+
+        val token = getAccessToken() ?: return null
+
+        val requestBody = ChatRequest(
+            model = ragPropertiesConfig.gigachat.llmModel,
+            messages = messages
+        )
+
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            setBearerAuth(token)
+        }
+
+        val entity = HttpEntity(requestBody, headers)
+
+        val response = restTemplate.postForObject(
+            ragPropertiesConfig.gigachat.llmUrl,
+            entity,
+            ChatResponse::class.java
+        ) ?: return null
+
+        return response.choices.firstOrNull()?.message?.content
+    }
+}

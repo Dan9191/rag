@@ -3,7 +3,6 @@ package ru.dan.rag.service
 import org.slf4j.LoggerFactory
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
-import ru.dan.rag.client.GigaEmbeddingClient
 import ru.dan.rag.config.RagPropertiesConfig
 import ru.dan.rag.model.answer.SearchRequest
 import ru.dan.rag.model.answer.SearchResponse
@@ -14,15 +13,13 @@ class SearchService (
     private val jdbcTemplate: JdbcTemplate,
     private val chunkEmbeddingService: ChunkEmbeddingService,
     private val ragPropertiesConfig: RagPropertiesConfig,
-    private val gigaEmbeddingClient: GigaEmbeddingClient
 ) {
 
     private val log = LoggerFactory.getLogger(SearchService::class.java)
 
     fun search(request: SearchRequest): SearchResponse {
         log.info("Поиск по запросу: ${request.query}")
-        val accessToken:String = gigaEmbeddingClient.getAccessToken().toString()
-        val queryEmbedding = chunkEmbeddingService.fetchEmbedding(request.query, accessToken)
+        val queryEmbedding = chunkEmbeddingService.fetchEmbedding(request.query)
 
         val results = findSimilarChunks(queryEmbedding, limit = 5, minSimilarity = ragPropertiesConfig.minSimilarity)
 

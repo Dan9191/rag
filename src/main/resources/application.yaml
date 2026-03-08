@@ -14,17 +14,6 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-  ai:
-    ollama:
-      base-url: http://localhost:11434
-      chat:
-        model: codellama:7b
-        options:
-          temperature: 0.35
-          top_p: 0.9
-          max_tokens: 2512
-          repeat_penalty: 1.1
-
 
 app:
   rag:
@@ -32,8 +21,11 @@ app:
       exchange: "article.exchange"
       routing-key: "article.outbox"
       queue: "article.outbox.queue"
-    embedding :
+    gigachat:
       embedding-model: ${EMBEDDING_MODEL:EmbeddingsGigaR}
       embedding-url: ${EMBEDDING_URL:https://gigachat.devices.sberbank.ru/api/v1/embeddings}
-      secert-token: ${AUTHORIZE_TOKEN:}
+      secret-token: ${SECRET_TOKEN:}
       token-url: ${TOKEN_URL:https://ngw.devices.sberbank.ru:9443/api/v2/oauth}
+      llm-url: ${LLM_URL:https://gigachat.devices.sberbank.ru/api/v1/chat/completions}
+      llm-model: ${LLM_MODEL:GigaChat-2-Max}
+    min-similarity: ${SECRET_TOKEN:0.50}

@@ -1,13 +1,11 @@
 package ru.dan.rag.controller
 
-import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
-import reactor.core.publisher.Flux
 import ru.dan.rag.model.answer.SearchRequest
 import ru.dan.rag.model.answer.SearchResponse
 import ru.dan.rag.service.LlmService
@@ -27,23 +25,8 @@ class RequestController (
     private val llmService: LlmService
 ) {
 
-    @PostMapping
-    fun search(@RequestBody request: SearchRequest): SearchResponse {
-        return searchService.search(request)
-    }
-
-    @PostMapping("/ai/chat")
+    @PostMapping("/ai/answer")
     fun chat(@RequestBody request: SearchRequest): Map<String, String> {
-        val response = llmService.generateResponse(request.query)
-        return mapOf("response" to response)
-    }
-
-    @PostMapping(
-        value = ["/chat/stream"],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.TEXT_EVENT_STREAM_VALUE]
-    )
-    fun chatStream(@RequestBody request: SearchRequest): Flux<String> {
         val searchResponse = searchService.search(request)
 
         val context = searchResponse.results
@@ -55,8 +38,13 @@ class RequestController (
                     if (result.similarity != null) append(" (score: %.3f)".format(result.similarity))
                 }
             }
+        val response = llmService.generateResponse(request.query, context)
+        return mapOf("response" to response)
+    }
 
-        return llmService.generateResponseStream(request.query, context)
+    @PostMapping
+    fun search(@RequestBody request: SearchRequest): SearchResponse {
+        return searchService.search(request)
     }
 
 }

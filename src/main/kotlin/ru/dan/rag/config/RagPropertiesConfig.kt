@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration
 @ConfigurationProperties(prefix = "app.rag")
 class RagPropertiesConfig (
     var rabbit: RabbitConfig = RabbitConfig(),
-    var embedding: EmbeddingConfig = EmbeddingConfig(),
+    var gigachat: GigachatConfig = GigachatConfig(),
 
     /**
      * Задержка (в миллисекундах) между запусками задачи отправки чанк на векторизацию.
@@ -37,7 +37,7 @@ class RagPropertiesConfig (
         var queue: String = ""
     )
 
-    data class EmbeddingConfig(
+    data class GigachatConfig(
 
         /**
          * Урл сервиса получения токена доступа.
@@ -45,9 +45,14 @@ class RagPropertiesConfig (
         var tokenUrl: String = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
 
         /**
-         * Урл сервиса векторизации.
+         * Урл моделей векторизации.
          */
         var embeddingUrl: String = "https://gigachat.devices.sberbank.ru/api/v1/embeddings",
+
+        /**
+         * Урл языковой моделей.
+         */
+        var llmUrl: String = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
 
         /**
          * Токен для gigachat моделей.
@@ -57,6 +62,11 @@ class RagPropertiesConfig (
         /**
          * Модель для векторизации.
          */
-        var embeddingModel: String = "EmbeddingsGigaR"
+        var embeddingModel: String = "EmbeddingsGigaR",
+
+        /**
+         * Языковая модель.
+         */
+        var llmModel: String = "GigaChat-2-Max"
     )
 }
